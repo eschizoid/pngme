@@ -7,7 +7,7 @@ use crate::{Error, Result};
 /// A validated PNG chunk type. See the PNG spec for more details.
 /// http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html
 #[derive(Debug, PartialEq, Eq)]
-struct ChunkType {
+pub struct ChunkType {
     bytes: [u8; 4],
 }
 
