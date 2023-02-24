@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::io::{BufReader, Read};
 
-use crc::crc32::checksum_ieee;
+use crc::Crc;
 
 use crate::{Error, Result};
 use crate::chunk_type::ChunkType;
@@ -26,7 +26,7 @@ impl Chunk {
             .chain(data.iter())
             .copied()
             .collect();
-        let crc = checksum_ieee(&crc_bytes);
+        let crc = Crc::<u32>::new(&crc::CRC_32_ISO_HDLC).checksum(&crc_bytes);
 
         Chunk {
             length,
@@ -83,7 +83,7 @@ impl Chunk {
 impl TryFrom<&[u8]> for Chunk {
     type Error = Error;
 
-    fn try_from(value: &[u8]) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: &[u8]) -> std::result::Result<Self, Error> {
         let mut reader = BufReader::new(value);
         let mut length_bytes = [0; 4];
         let mut chunk_type_bytes = [0; 4];
@@ -91,14 +91,17 @@ impl TryFrom<&[u8]> for Chunk {
 
         reader.read_exact(&mut length_bytes)?;
         reader.read_exact(&mut chunk_type_bytes)?;
+
         let length = u32::from_be_bytes(length_bytes);
         let chunk_type = ChunkType::try_from(chunk_type_bytes)?;
         let mut data = vec![0; length as usize];
+
         reader.read_exact(&mut data)?;
         reader.read_exact(&mut crc_bytes)?;
-        let crc = u32::from_be_bytes(crc_bytes);
 
+        let crc = u32::from_be_bytes(crc_bytes);
         let chunk = Chunk::new(chunk_type, data);
+
         if chunk.crc() != crc {
             return Err("CRC does not match".into());
         }
