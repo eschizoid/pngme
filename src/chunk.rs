@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 use std::fmt;
 use std::io::{BufReader, Read};
+use crc::crc32::checksum_ieee;
 
 use crate::{Error, Result};
 use crate::chunk_type::ChunkType;
@@ -15,42 +16,26 @@ pub struct Chunk {
     crc: u32,
 }
 
-impl TryFrom<&[u8]> for Chunk {
-    type Error = Error;
+impl Chunk {
+    pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
+        let length = data.len() as u32;
+        let crc_bytes: Vec<u8> = chunk_type
+            .bytes()
+            .iter()
+            .chain(data.iter())
+            .copied()
+            .collect();
+        let crc = checksum_ieee(&crc_bytes);
 
-    fn try_from(bytes: &[u8]) -> Result<Self> {
-        let length = u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-        let chunk_type = ChunkType::try_from(<[u8; 4]>::try_from(&bytes[4..8]))?;
-        let data = bytes[8..(8 + length as usize)].to_vec();
-        let crc = u32::from_be_bytes([
-            bytes[(8 + length as usize)],
-            bytes[(8 + length as usize + 1)],
-            bytes[(8 + length as usize + 2)],
-            bytes[(8 + length as usize + 3)],
-        ]);
-
-        Ok(Chunk {
+        Chunk {
             length,
             chunk_type,
             data,
             crc,
-        })
+        }
     }
-}
 
-impl fmt::Display for Chunk {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Chunk {{", )?;
-        writeln!(f, "  Length: {}", self.length())?;
-        writeln!(f, "  Type: {}", self.chunk_type())?;
-        writeln!(f, "  Data: {} bytes", self.data().len())?;
-        writeln!(f, "  Crc: {}", self.crc())?;
-        writeln!(f, "}}", )?;
-        Ok(())
-    }
-}
 
-impl Chunk {
     /// The length of the data portion of this chunk.
     pub fn length(&self) -> u32 {
         self.length
@@ -84,12 +69,53 @@ impl Chunk {
     /// 3. The data itself *(`length` bytes)*
     /// 4. The CRC of the chunk type and data *(4 bytes)*
     pub fn as_bytes(&self) -> Vec<u8> {
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(&self.length.to_be_bytes());
-        bytes.extend_from_slice(self.chunk_type.as_bytes());
-        bytes.extend_from_slice(&self.data);
-        bytes.extend_from_slice(&self.crc.to_be_bytes());
-        bytes
+        self.length
+            .to_be_bytes()
+            .iter()
+            .chain(self.chunk_type.bytes().iter())
+            .chain(self.data.iter())
+            .chain(self.crc.to_be_bytes().iter())
+            .copied()
+            .collect()
+    }
+}
+
+impl TryFrom<&[u8]> for Chunk {
+    type Error = Error;
+
+    fn try_from(value: &[u8]) -> std::result::Result<Self, Self::Error> {
+        let mut reader = BufReader::new(value);
+        let mut length_bytes = [0; 4];
+        let mut chunk_type_bytes = [0; 4];
+        let mut crc_bytes = [0; 4];
+
+        reader.read_exact(&mut length_bytes)?;
+        reader.read_exact(&mut chunk_type_bytes)?;
+        let length = u32::from_be_bytes(length_bytes);
+        let chunk_type = ChunkType::try_from(chunk_type_bytes)?;
+        let mut data = vec![0; length as usize];
+        reader.read_exact(&mut data)?;
+        reader.read_exact(&mut crc_bytes)?;
+        let crc = u32::from_be_bytes(crc_bytes);
+
+        let chunk = Chunk::new(chunk_type, data);
+        if chunk.crc() != crc {
+            return Err("CRC does not match".into());
+        }
+
+        Ok(chunk)
+    }
+}
+
+impl fmt::Display for Chunk {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Chunk {{", )?;
+        writeln!(f, "  Length: {}", self.length())?;
+        writeln!(f, "  Type: {}", self.chunk_type())?;
+        writeln!(f, "  Data: {} bytes", self.data().len())?;
+        writeln!(f, "  Crc: {}", self.crc())?;
+        writeln!(f, "}}", )?;
+        Ok(())
     }
 }
 

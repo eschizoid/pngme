@@ -6,45 +6,9 @@ use crate::{Error, Result};
 
 /// A validated PNG chunk type. See the PNG spec for more details.
 /// http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChunkType {
     bytes: [u8; 4],
-}
-
-impl TryFrom<[u8; 4]> for ChunkType {
-    type Error = Error;
-
-    fn try_from(bytes: [u8; 4]) -> Result<Self> {
-        for byte in bytes.iter() {
-            if !byte.is_ascii_alphabetic() {
-                return Err("Invalid chunk type".into());
-            }
-        }
-
-        Ok(ChunkType { bytes })
-    }
-}
-
-impl FromStr for ChunkType {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        let bytes = s.as_bytes();
-        if bytes.len() != 4 {
-            return Err("Invalid chunk type".into());
-        }
-
-        let mut chunk_type_bytes = [0; 4];
-        chunk_type_bytes.copy_from_slice(bytes);
-
-        ChunkType::try_from(chunk_type_bytes)
-    }
-}
-
-impl fmt::Display for ChunkType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", String::from_utf8_lossy(&self.bytes))
-    }
 }
 
 impl ChunkType {
@@ -82,6 +46,42 @@ impl ChunkType {
     /// Valid bytes are represented by the characters A-Z or a-z
     pub fn is_valid_byte(byte: u8) -> bool {
         byte.is_ascii_alphabetic()
+    }
+}
+
+impl TryFrom<[u8; 4]> for ChunkType {
+    type Error = Error;
+
+    fn try_from(bytes: [u8; 4]) -> Result<Self> {
+        for byte in bytes.iter() {
+            if !byte.is_ascii_alphabetic() {
+                return Err("Invalid chunk type".into());
+            }
+        }
+
+        Ok(ChunkType { bytes })
+    }
+}
+
+impl FromStr for ChunkType {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        let bytes = s.as_bytes();
+        if bytes.len() != 4 {
+            return Err("Invalid chunk type".into());
+        }
+
+        let mut chunk_type_bytes = [0; 4];
+        chunk_type_bytes.copy_from_slice(bytes);
+
+        ChunkType::try_from(chunk_type_bytes)
+    }
+}
+
+impl fmt::Display for ChunkType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", String::from_utf8_lossy(&self.bytes))
     }
 }
 
