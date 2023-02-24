@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 use std::fmt;
 use std::io::{BufReader, Read};
+
 use crc::crc32::checksum_ieee;
 
 use crate::{Error, Result};
@@ -34,7 +35,6 @@ impl Chunk {
             crc,
         }
     }
-
 
     /// The length of the data portion of this chunk.
     pub fn length(&self) -> u32 {
@@ -118,7 +118,6 @@ impl fmt::Display for Chunk {
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod tests {
