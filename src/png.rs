@@ -21,7 +21,7 @@ impl Png {
     pub const STANDARD_HEADER: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
 
     /// Creates a `Png` from a list of chunks using the correct header
-    pub fn from_chunks(chunks: Vec<Chunk>) -> Png {
+    pub fn from_chunks(chunks: Vec<Chunk>) -> Self {
         Png { chunks }
     }
 
@@ -88,23 +88,18 @@ impl TryFrom<&[u8]> for Png {
 
     fn try_from(bytes: &[u8]) -> Result<Self> {
         let mut chunks = Vec::new();
+
         let mut bytes = bytes;
-
-        // Check the header
-        if bytes.len() < Png::STANDARD_HEADER.len() {
-            return Err("Not enough bytes to read header".into());
-        }
-        let header = &bytes[..Png::STANDARD_HEADER.len()];
+        let header = &bytes[..8];
         if header != Png::STANDARD_HEADER {
-            return Err("Invalid header".into());
+            return Err(format!("Invalid PNG header: {:?}", header).into());
         }
-        bytes = &bytes[Png::STANDARD_HEADER.len()..];
+        bytes = &bytes[8..];
 
-        // Read the chunks
-        while bytes.len() > 0 {
+        while !bytes.is_empty() {
             let chunk = Chunk::try_from(bytes)?;
-            chunks.push(chunk);
-            bytes = &bytes[chunk.clone().as_bytes().len()..];
+            chunks.push(chunk.clone());
+            bytes = &bytes[chunk.as_bytes().len()..] as &[u8];
         }
 
         Ok(Png::from_chunks(chunks))
