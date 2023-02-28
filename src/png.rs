@@ -89,17 +89,24 @@ impl TryFrom<&[u8]> for Png {
     fn try_from(bytes: &[u8]) -> Result<Self> {
         let mut chunks = Vec::new();
         let mut bytes = bytes;
-        let mut header = [0; 8];
-        header.copy_from_slice(&bytes[..8]);
-        bytes = &bytes[8..];
+
+        // Check the header
+        if bytes.len() < Png::STANDARD_HEADER.len() {
+            return Err("Not enough bytes to read header".into());
+        }
+        let header = &bytes[..Png::STANDARD_HEADER.len()];
         if header != Png::STANDARD_HEADER {
             return Err("Invalid header".into());
         }
+        bytes = &bytes[Png::STANDARD_HEADER.len()..];
+
+        // Read the chunks
         while bytes.len() > 0 {
             let chunk = Chunk::try_from(bytes)?;
             chunks.push(chunk);
-            bytes = &bytes[chunk.as_bytes().len()..];
+            bytes = &bytes[chunk.clone().as_bytes().len()..];
         }
+
         Ok(Png::from_chunks(chunks))
     }
 }
@@ -140,8 +147,6 @@ mod tests {
     }
 
     fn chunk_from_strings(chunk_type: &str, data: &str) -> Result<Chunk> {
-        use std::str::FromStr;
-
         let chunk_type = ChunkType::from_str(chunk_type)?;
         let data: Vec<u8> = data.bytes().collect();
 
