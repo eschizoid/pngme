@@ -1,8 +1,5 @@
 use std::convert::TryFrom;
 use std::fmt;
-use std::fs;
-use std::io::{BufReader, Read};
-use std::path::Path;
 use std::str::FromStr;
 
 use crate::{Error, Result};
@@ -18,22 +15,11 @@ pub struct Png {
 
 impl Png {
     // Fill in this array with the correct values per the PNG spec
-    pub const STANDARD_HEADER: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
+    const STANDARD_HEADER: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
 
     /// Creates a `Png` from a list of chunks using the correct header
     pub fn from_chunks(chunks: Vec<Chunk>) -> Self {
         Png { chunks }
-    }
-
-    /// Creates a `Png` from a file path
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let file = fs::File::open(path)?;
-        let mut reader = BufReader::new(file);
-
-        let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes)?;
-
-        Png::try_from(bytes.as_ref())
     }
 
     /// Appends a chunk to the end of this `Png` file's `Chunk` list.
@@ -57,6 +43,7 @@ impl Png {
     pub fn header(&self) -> &[u8; 8] {
         &Png::STANDARD_HEADER
     }
+
     /// Lists the `Chunk`s stored in this `Png`
     pub fn chunks(&self) -> &[Chunk] {
         &self.chunks
