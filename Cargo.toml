@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 crc = "3.0.1"
+clap = "4.1.6"
+structopt = "0.3.26"

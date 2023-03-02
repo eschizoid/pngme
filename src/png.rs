@@ -1,5 +1,7 @@
 use std::convert::TryFrom;
 use std::fmt;
+use std::io::{BufReader, Read, Write};
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use crate::{Error, Result};
@@ -21,6 +23,26 @@ impl Png {
     pub fn from_chunks(chunks: Vec<Chunk>) -> Self {
         Png { chunks }
     }
+
+    /// Creates a `Png` from a file path
+    pub fn from_file(path: &Path) -> Result<Self> {
+        let mut file = std::fs::File::open(path)?;
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+        Self::try_from(buf.as_ref())
+    }
+
+    pub fn insert_chunk(&mut self, chunk: Chunk) -> Result<()> {
+        let chunk_type = chunk.chunk_type();
+        let index = self
+            .chunks
+            .iter()
+            .position(|chunk| chunk.chunk_type() == chunk_type)
+            .ok_or(format!("Chunk type {} not found", chunk_type))?;
+        self.chunks.insert(index, chunk);
+        Ok(())
+    }
+
 
     /// Appends a chunk to the end of this `Png` file's `Chunk` list.
     pub fn append_chunk(&mut self, chunk: Chunk) {
@@ -86,7 +108,7 @@ impl TryFrom<&[u8]> for Png {
         while !bytes.is_empty() {
             let chunk = Chunk::try_from(bytes)?;
             chunks.push(chunk.clone());
-            bytes = &bytes[chunk.as_bytes().len()..] as &[u8];
+            bytes = &bytes[chunk.as_bytes().len()..];
         }
 
         Ok(Png::from_chunks(chunks))
