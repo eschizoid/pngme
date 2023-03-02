@@ -7,7 +7,6 @@ use crate::commands::{decode, encode, print, remove};
 use crate::Error;
 
 #[derive(StructOpt)]
-#[structopt(global_settings(& [AppSettings::VersionlessSubcommands]))]
 pub struct Cli {
     #[structopt(subcommand)]
     pub args: Args,
