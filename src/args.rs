@@ -5,7 +5,7 @@ use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
 use crate::chunk_type::ChunkType;
-use crate::commands::{extract, insert, list};
+use crate::commands::{extract, insert, list, remove};
 
 #[derive(StructOpt)]
 #[structopt(global_settings(& [AppSettings::VersionlessSubcommands]))]
@@ -62,7 +62,7 @@ pub fn run(subcommand: &Subcommand) -> Result<(), Box<dyn std::error::Error>> {
     match subcommand {
         Subcommand::Extract(args) => extract(args),
         Subcommand::Insert(args) => insert(args),
-        //Subcommand::Remove(args) => remove(args),
+        Subcommand::Remove(args) => remove(args),
         Subcommand::List(args) => list(args),
         _ => unimplemented!(),
     }

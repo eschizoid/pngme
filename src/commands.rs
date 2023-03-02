@@ -32,3 +32,10 @@ pub fn list(args: &ListArgs) -> Result<(), Box<dyn std::error::Error>> {
     }
     Ok(())
 }
+
+pub fn remove(args: &RemoveArgs) -> Result<(), Box<dyn std::error::Error>> {
+    let mut png = Png::try_from(fs::read(&args.input)?.as_ref())?;
+    png.remove_chunk(&args.chunk_type.to_string())?;
+    fs::write(&args.output, png.as_bytes())?;
+    Ok(())
+}
