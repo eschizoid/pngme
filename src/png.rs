@@ -1,7 +1,8 @@
+use std::{fmt, fs};
 use std::convert::TryFrom;
-use std::fmt;
-use std::io::{BufReader, Read, Write};
-use std::path::{Path, PathBuf};
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use crate::{Error, Result};
@@ -25,24 +26,16 @@ impl Png {
     }
 
     /// Creates a `Png` from a file path
-    pub fn from_file(path: &Path) -> Result<Self> {
-        let mut file = std::fs::File::open(path)?;
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf)?;
-        Self::try_from(buf.as_ref())
+    pub fn from_file(path: PathBuf) -> Result<Self> {
+        let file = fs::read(path)?;
+        Png::try_from(file.as_slice())
     }
 
-    pub fn insert_chunk(&mut self, chunk: Chunk) -> Result<()> {
-        let chunk_type = chunk.chunk_type();
-        let index = self
-            .chunks
-            .iter()
-            .position(|chunk| chunk.chunk_type() == chunk_type)
-            .ok_or(format!("Chunk type {} not found", chunk_type))?;
-        self.chunks.insert(index, chunk);
+    pub fn write_file(&self, path: PathBuf) -> Result<()> {
+        let mut file = File::create(path)?;
+        file.write(self.as_bytes().as_slice())?;
         Ok(())
     }
-
 
     /// Appends a chunk to the end of this `Png` file's `Chunk` list.
     pub fn append_chunk(&mut self, chunk: Chunk) {

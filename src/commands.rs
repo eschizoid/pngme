@@ -1,41 +1,46 @@
-use std::convert::TryFrom;
-use std::fs;
+use std::path::PathBuf;
+use std::str::FromStr;
 
-use crate::args::{ExtractArgs, InsertArgs, ListArgs, RemoveArgs};
+use crate::args::{DecodeArgs, EncodeArgs, PrintArgs, RemoveArgs};
 use crate::chunk::Chunk;
 use crate::chunk_type::ChunkType;
 use crate::png::Png;
+use crate::Result;
 
-pub fn extract(args: &ExtractArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let png = Png::try_from(fs::read(&args.input)?.as_ref())?;
-    let chunk = png
-        .chunks()
-        .iter()
-        .find(|chunk| chunk.chunk_type() == &args.chunk_type)
-        .ok_or("Chunk not found")?;
-    fs::write(&args.output, chunk.data())?;
+pub fn encode(encode_args: EncodeArgs) -> Result<()> {
+    let mut png = Png::from_file(encode_args.file_path)?;
+    let chunk_type = ChunkType::from_str(encode_args.chunk_type.as_str())?;
+    let chunk = Chunk::new(chunk_type, encode_args.message.as_bytes().to_vec());
+    let output_file_path = if let Some(output_file_name) = encode_args.output_file {
+        output_file_name
+    } else {
+        PathBuf::from_str("output.png").unwrap()
+    };
+    png.append_chunk(chunk);
+    png.write_file(output_file_path)?;
     Ok(())
 }
 
-pub fn insert(args: &InsertArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let mut png = Png::try_from(fs::read(&args.input)?.as_ref())?;
-    let chunk = Chunk::try_from(fs::read(&args.chunk)?.as_ref())?;
-    png.insert_chunk(chunk)?;
-    fs::write(&args.output, png.as_bytes())?;
-    Ok(())
-}
-
-pub fn list(args: &ListArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let png = Png::try_from(fs::read(&args.input)?.as_ref())?;
-    for chunk in png.chunks() {
-        println!("{}", chunk.chunk_type());
+pub fn decode(decode_args: DecodeArgs) -> Result<()> {
+    let png = Png::from_file(decode_args.file_path)?;
+    if let Some(chunk) = png.chunk_by_type(decode_args.chunk_type.as_str()) {
+        println!("{}", chunk);
+    } else {
+        eprintln!("Chunk type: {} not found", decode_args.chunk_type);
     }
     Ok(())
 }
 
-pub fn remove(args: &RemoveArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let mut png = Png::try_from(fs::read(&args.input)?.as_ref())?;
-    png.remove_chunk(&args.chunk_type.to_string())?;
-    fs::write(&args.output, png.as_bytes())?;
+pub fn remove(remove_args: RemoveArgs) -> Result<()> {
+    let mut png = Png::from_file(remove_args.file_path.clone())?;
+    png.remove_chunk(remove_args.chunk_type.as_str())?;
+    png.write_file(remove_args.file_path)
+}
+
+pub fn print(print_args: PrintArgs) -> Result<()> {
+    let png = Png::from_file(print_args.file_path)?;
+    for chunk in png.chunks().iter() {
+        println!("{}", chunk);
+    }
     Ok(())
 }

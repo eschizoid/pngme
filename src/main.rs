@@ -11,5 +11,5 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 fn main() -> Result<()> {
     let args = args::Cli::from_args();
-    args::run(&args.subcommand)
+    args::run(args.args)
 }
